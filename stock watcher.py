@@ -6,29 +6,57 @@ import requests
 import json
 import threading
 import time
+import datetime
+
 
 config = {"stocks" : [], "notifications":"", "rate": 1200}
 stocks=[]
 
-def fetch(monitor):
-    num = 0
-    while num < monitor:
-        time.sleep(10)
-        num += 10
-        print("fetching new info in " + str(monitor-num) + " seconds")
-    print('fetching!')
-    '''headers = {
-	"X-RapidAPI-Key": "2b1ab8509cmsh1d250472e255ecbp1b3a8djsnac24acb5b68b",
-	"X-RapidAPI-Host": "yh-finance.p.rapidapi.com" }
-    url = "https://yh-finance.p.rapidapi.com/market/v2/get-quotes"
+from tkinter import *
+
+flag = False
+
+def isopen():
+    return True
+    '''#0 = monday, 1 = tuesday, etc
+    day = datetime.datetime.today().weekday()
+    if day < 5:
+        #day is a weekday
+        hour = datetime.datetime.now().hour
+        minute = datetime.datetime.now().minute
+        if (hour >= 9 and minute >= 30) or (hour > 9):
+            if hour < 16:
+                return True
+    return False'''
+
+def fetch(monitor=1200):
+    global flag
+    print(3)
+    while flag:
+        print(4)
+        if isopen():
+            T.configure(state="normal")
+            T.insert(END, "market is open, fetching new prices")
+            T.configure(state="disabled")
+            print("market is open, fetching new prices")
+            num = 0
+            while num < monitor:
+                time.sleep(10)
+                num += 10
+                print("fetching new info in " + str(monitor-num) + " seconds")
+            print('fetching!')
+            '''headers = {
+            "X-RapidAPI-Key": "2b1ab8509cmsh1d250472e255ecbp1b3a8djsnac24acb5b68b",
+            "X-RapidAPI-Host": "yh-finance.p.rapidapi.com" }
+            url = "https://yh-finance.p.rapidapi.com/market/v2/get-quotes"
 
 
-    stocks = ','.join(config['stocks'])
-    querystring = {"region":"US","symbols":"AMD,IBM,AAPL"}
-    response = requests.request("GET", url, headers=headers, params=querystring)
-    response = json.loads(response.text)
-    askprice = response["quoteResponse"]['result'][0]['ask']
-    print(askprice)'''
+            stocks = ','.join(config['stocks'])
+            querystring = {"region":"US","symbols":"AMD,IBM,AAPL"}
+            response = requests.request("GET", url, headers=headers, params=querystring)
+            response = json.loads(response.text)
+            askprice = response["quoteResponse"]['result'][0]['ask']
+            print(askprice)'''
 
 def notify(url):
     hook = Webhook(url=url)
@@ -45,7 +73,7 @@ def menu(config):
         config = json.load(fn)
         stocks = config['stocks']
 
-    start = input("What would you like to do?")
+    start = input("What would you like to do? Enter 'add' to add a ticker, 'notify' to set a price notification, 'remove' to remove a ticker, 'config' to edit the settings, or 'monitor' to begin monitoring prices")
     if start == "add":
         go = input("Enter your stock ticker")
         try:
@@ -83,12 +111,34 @@ def menu(config):
             rate = 1200
             config["rate"] = 1200
         t = threading.Thread(target=fetch(rate))
-
-menu(config)
     
 
 
+def go():
+    global flag
+    if flag == True:
+        flag = False
+    else:
+        flag = True
+    print(1)
+    fetch(1200)
 
 
+window=Tk()
+# add widgets here
+btn=Button(window, text="Monitor", fg='blue', command=threading.Thread(target=go, daemon=True).start)
+btn.pack()
+T = Text(window, height = 5, width = 52, state="disabled")
+T.pack()
+window.title('Stock watcher')
+window.geometry("300x200+10+20")
 
+window.mainloop()
+#t2 = threading.Thread(target= window.mainloop())
+#t2.start()
+
+#todo: add window
+#remove selector
+#webhook section
+#refresh rate section
 

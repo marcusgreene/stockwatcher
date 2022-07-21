@@ -163,6 +163,7 @@ Combo.set("Pick an Option")
 window.title('Stock watcher')
 window.geometry("300x200+10+20")
 
+#runs gui
 gui()
 window.mainloop()
 

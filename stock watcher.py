@@ -164,6 +164,7 @@ window.title('Stock watcher')
 window.geometry("300x200+10+20")
 
 #runs gui
+#hello
 gui()
 window.mainloop()
 

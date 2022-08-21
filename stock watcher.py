@@ -1,5 +1,8 @@
 #uses rapidapi yh finance api, which allows 500 calls per month.
 #23 x 7 hours equals 161 hours of trading per month, and if theres 500 calls, then you can do 3 calls per hour, max 20 minute refresh time
+#https://www.advfn.com/p.php?pid=qkquote&symbol=
+
+
 
 from dhooks import Webhook
 import requests
@@ -9,6 +12,9 @@ import time
 import datetime
 from tkinter import *
 from tkinter import ttk
+import requests
+from bs4 import BeautifulSoup
+
 
 
 config = {"stocks" : [], "webhook":"", "rate": 1200, "notifications":{}}
@@ -28,7 +34,6 @@ flag = False
 
 #sees if the market is open based on the date and time
 def isopen():
-    return True
     #0 = monday, 1 = tuesday, etc
     day = datetime.datetime.today().weekday()
     if day < 5:
@@ -72,6 +77,8 @@ def fetch(monitor=1200):
             response = json.loads(response.text)
             askprice = response["quoteResponse"]['result'][0]['ask']
             print(askprice)'''
+        else:
+            print("market is closed")
     
 def menu(config):
     if start == "notify":
@@ -88,20 +95,6 @@ def menu(config):
             config['stocks'].pop(start)
         except:
             print("This stock is not in the list")
-    elif start == "config":
-        inp = input("What would you like to change?")
-        if inp == "refresh rate":
-            pass
-        elif inp == "notify":
-            url = input("enter your webhook URL")
-            notify(url=url)
-    elif start == "monitor":
-        try:
-            rate = config["rate"]
-        except:
-            rate = 1200
-            config["rate"] = 1200
-        t = threading.Thread(target=fetch(rate))
     
 #triggered upon monitor button clicked
 def go():
@@ -116,14 +109,18 @@ def go():
 #adds the ticker to the stock list
 def addticker():
     ticker = my_entry.get()
-    config['stocks'].append(ticker)
-    my_entry.delete(0,END)
-    fn = open("config.json","w")
-    json.dump(config,fn)
-    print(config['stocks'])
-    Combo['values'] = tuple(list(Combo['values']).append(ticker))
-    #TODO json dump
-    #TODO try and except block for wrong ticker
+    if len(ticker) > 0 and ticker not in config['stocks']: 
+        headers = {'User-Agent':"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:94.0) Gecko/20100101 Firefox/94.0"
+        }
+        r = requests.get('https://www.advfn.com/p.php?pid=qkquote&symbol=' + ticker, headers=headers)
+        soup = BeautifulSoup(r.content, 'html.parser')
+        symbol = soup.find('h1',{'class':'symbol-h1'}).find('strong').text
+        if symbol.upper() == ticker.upper():
+            config['stocks'].append(ticker)
+            my_entry.delete(0,END)
+            fn = open("config.json","w")
+            json.dump(config,fn)
+            print(config['stocks'])
 
 def testhook():
     hook = Webhook(url=webhook.get())
@@ -140,11 +137,20 @@ def gui():
     webhook.pack()
     test.pack()
     Combo.pack()
+    remove.pack()
     stopbtn.pack()
+    if len(config['webhook']) > 0:
+        webhook.insert(END,config["webhook"])
 
 def unflag():
     global flag
     flag = False
+
+def removeticker():
+    ticker = Combo.get()
+    config['stocks'].remove(ticker)
+    Combo['values'] = config['stocks']
+    #TODO dump config to file
 
 
 window=Tk()
@@ -155,13 +161,12 @@ T = Text(window, height = 5, width = 52, state="disabled")
 my_entry = Entry(window)
 submit = Button(window, text="submit", command=addticker)
 webhook = Entry(window)
-if len(config['webhook']) > 0:
-    webhook.insert(END,config["webhook"])
 test = Button(window, command = testhook, text="test webhook")
 Combo = ttk.Combobox(window, values = stocks)
 Combo.set("Pick an Option")
+remove = Button(window, text="remove ticker", command=removeticker)
 window.title('Stock watcher')
-window.geometry("300x200+10+20")
+window.geometry("350x350")
 
 #runs gui
 #hello

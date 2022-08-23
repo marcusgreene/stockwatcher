@@ -2,8 +2,6 @@
 #23 x 7 hours equals 161 hours of trading per month, and if theres 500 calls, then you can do 3 calls per hour, max 20 minute refresh time
 #https://www.advfn.com/p.php?pid=qkquote&symbol=
 
-
-
 from dhooks import Webhook
 import requests
 import json
@@ -34,6 +32,7 @@ flag = False
 
 #sees if the market is open based on the date and time
 def isopen():
+    return True
     #0 = monday, 1 = tuesday, etc
     day = datetime.datetime.today().weekday()
     if day < 5:
@@ -53,48 +52,36 @@ def fetch(monitor=1200):
         print(4)
         if isopen():
             T.configure(state="normal")
-            T.insert(END, "market is open, fetching new prices")
+            T.insert(END, "market is open, fetching new prices \n")
             T.configure(state="disabled")
             print("market is open, fetching new prices")
             num = 0
             while num < monitor and flag:
                 time.sleep(10)
                 num += 10
-                print("fetching new info in " + str(monitor-num) + " seconds")
+                print("fetching new info in " + str(monitor-num) + " seconds \n")
             if flag == False:
-                print("Monitor was stopped")
+                T.configure(state="normal")
+                T.insert(END, "Monitor has been stopped \n")
+                T.configure(state="disabled")
                 return
             print('fetching!')
-            '''headers = {
+            headers = {
             "X-RapidAPI-Key": "2b1ab8509cmsh1d250472e255ecbp1b3a8djsnac24acb5b68b",
             "X-RapidAPI-Host": "yh-finance.p.rapidapi.com" }
             url = "https://yh-finance.p.rapidapi.com/market/v2/get-quotes"
-
-
             stocks = ','.join(config['stocks'])
-            querystring = {"region":"US","symbols":"AMD,IBM,AAPL"}
+            #querystring = {"region":"US","symbols":"AMD,IBM,AAPL"}
+            querystring = {"region":"US","symbols":stocks}
             response = requests.request("GET", url, headers=headers, params=querystring)
             response = json.loads(response.text)
-            askprice = response["quoteResponse"]['result'][0]['ask']
-            print(askprice)'''
+            T.configure(state="normal")
+            for i in range(len(config['stocks'])):
+                T.insert(END, config['stocks'][i] + ": " + str(response["quoteResponse"]['result'][i]['ask']) + " \n")
+            T.configure(state="disabled")
+
         else:
             print("market is closed")
-    
-def menu(config):
-    if start == "notify":
-        sys = input("Enter the stock ticker you would like to watch")
-        price = input("Enter the price target")
-        ou = input("Over or under this price target?")
-        try:
-            config['notifications'].append([sys,price,ou])
-        except:
-            config['notifications'] = [sys,price,ou]
-    elif start == "remove":
-        start = input("enter the stock ticker you would like to remove")
-        try:
-            config['stocks'].pop(start)
-        except:
-            print("This stock is not in the list")
     
 #triggered upon monitor button clicked
 def go():
@@ -104,7 +91,7 @@ def go():
     else:
         flag = True
     print(1)
-    fetch(1200)
+    fetch(10)
 
 #adds the ticker to the stock list
 def addticker():
@@ -138,7 +125,10 @@ def gui():
     test.pack()
     Combo.pack()
     remove.pack()
+    addNotif.pack()
     stopbtn.pack()
+
+    #better syntax for this
     if len(config['webhook']) > 0:
         webhook.insert(END,config["webhook"])
 
@@ -150,21 +140,53 @@ def removeticker():
     ticker = Combo.get()
     config['stocks'].remove(ticker)
     Combo['values'] = config['stocks']
-    #TODO dump config to file
+
+    #dump config to file
+    fn = open("config.json","w")
+    json.dump(config,fn)
+
+
+def addHelper(selected, priceTarget):
+    print(selected, priceTarget)
+    config['notifications'][Combo.get()] = [selected, priceTarget]
+
+    #dump to config
+    fn = open("config.json","w")
+    json.dump(config,fn)
+
+def addNotification():
+    notiWindow = Toplevel(window)
+    notiWindow.geometry("300x300")
+    notiWindow.title("Notification Center")
+    selected = StringVar(notiWindow)
+    over = Radiobutton(notiWindow, text= "Over", value="Over", variable=selected)
+    under = Radiobutton(notiWindow, text="Under", value="Under", variable=selected)
+    priceTarget = Entry(notiWindow)
+    priceTarget.insert(0,"Insert price target here")
+    submit = Button(notiWindow, text="Add Notification", command= lambda: addHelper(selected.get() ,int(priceTarget.get())))
+    over.pack()
+    under.pack()
+    priceTarget.pack()
+    submit.pack()
 
 
 window=Tk()
+
 # add widgets here
 btn=Button(window, text="Monitor", fg='blue', command=threading.Thread(target=go, daemon=True).start)
 stopbtn = Button(window, text= "Stop Monitor", command= unflag)
 T = Text(window, height = 5, width = 52, state="disabled")
 my_entry = Entry(window)
-submit = Button(window, text="submit", command=addticker)
+my_entry.insert(0,"Enter stock ticker here")
+submit = Button(window, text="Add ticker", command=addticker)
 webhook = Entry(window)
+webhook.insert(0,"Enter webhook here")
 test = Button(window, command = testhook, text="test webhook")
 Combo = ttk.Combobox(window, values = stocks)
 Combo.set("Pick an Option")
 remove = Button(window, text="remove ticker", command=removeticker)
+addNotif = Button(window, text="Add Notification", command=addNotification)
+
 window.title('Stock watcher')
 window.geometry("350x350")
 
@@ -176,6 +198,5 @@ window.mainloop()
 #t2 = threading.Thread(target= window.mainloop())
 #t2.start()
 
-#remove selector
 #refresh rate section
 
